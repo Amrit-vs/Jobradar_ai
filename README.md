@@ -19,10 +19,25 @@ PostgreSQL, Alembic, React, TypeScript, Tailwind CSS, and Docker Compose.
   coverage, bounded application upload reads, PostgreSQL activation locking,
   resume lifecycle tests, and dependency locks.
 
-Matching, ranking, live sources, scheduled collection, notifications, and
+Live sources, scheduled collection, notifications, and
 authentication are not implemented. Dashboard currently shows the jobs list;
 Preferences, Alerts, and Settings are placeholders. All resume requests use one
 configured development user. This stack is intended for local development.
+
+## Phase 4 matching
+
+Jobs can be ranked against the active saved resume using local TF-IDF/cosine
+similarity and normalized skill coverage (default weights 40% text / 60% skills).
+Cards/details show scores, matched/missing skills, and separate eligibility checks.
+Use **Best match** and **Minimum match score** on the Jobs page after reviewing,
+saving, and activating a resume. Missing/ambiguous qualifications remain unknown.
+Optional total experience and academic percentage can be entered in the profile;
+CGPA and dates are never converted into eligibility facts.
+
+Configure `MATCHING_SKILL_WEIGHT` and `MATCHING_TEXT_WEIGHT` in `.env` if needed.
+No external model, dependency upgrade, or migration is required. See
+[matching documentation](docs/matching.md) for the formula, API fields, supported
+hard-requirement formats, and limitations.
 
 ## Windows quick start (Docker Desktop)
 

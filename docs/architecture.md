@@ -11,3 +11,12 @@ The backend is organized by responsibility: `api` exposes HTTP routes, `core` co
 Phase 2 adds an internal ingestion pipeline: `JobSourceAdapter → NormalizedJob → JobIngestionService → PostgreSQL → API → React`. The registry supplies adapters; the ingestion service contains no company-specific code. Every current adapter is an offline `MOCK` source, and no external job site is contacted.
 
 Phase 3 adds a local resume pipeline: upload validation → PDF/DOCX extraction → deterministic parsing → validated JSON profile data → user review. It is isolated under `services/resume` so a later parser can be introduced without changing upload APIs.
+
+Phase 4 adds `services/matching`: a pure, deterministic TF-IDF/cosine and skill
+engine plus a conservative eligibility evaluator, with a thin service to load
+the active saved resume once per API request. The engine accepts validated
+resume data and plain job text, with no dependency on collectors or database
+models. Scores are computed on demand and never persisted. The API keeps its
+existing jobs array/details contracts and adds matching fields and a context
+endpoint. Optional experience/percentage values live in existing resume JSON;
+no migration or new external dependency is needed.

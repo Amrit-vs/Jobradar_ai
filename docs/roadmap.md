@@ -11,8 +11,9 @@
    transaction boundaries and disabled-company behavior, bound application
    upload reads, serialize active-resume requests, cover resume extraction/API
    workflows, lock baseline dependencies, and validate disposable PostgreSQL.
-4. **Next proposed phase (not implemented):** configurable source-independent
-   TF-IDF matching, ranking, explanations, and a functional minimum-score filter.
+4. **Matching — implemented:** source-independent TF-IDF/cosine and skill
+   scoring, configurable weights, ranking/minimum-score filtering, conservative
+   explicit eligibility checks, and explanations on job cards/details.
 5. **Discovery workflow:** dashboard metrics, company management controls,
    candidate preferences, pagination, and expanded filtering.
 6. **Permitted live sources:** documented adapters respecting source policies,

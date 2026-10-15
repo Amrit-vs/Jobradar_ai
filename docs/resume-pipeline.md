@@ -11,6 +11,15 @@ Parsing is local and deterministic: section headings, regular expressions, and a
 
 Phase 3 does not implement matching, notifications, live sources, or automatic applications.
 
+Phase 4 consumes saved active profiles for deterministic matching. Activation is
+the existing explicit review/selection action; no separate reviewed flag exists.
+Save corrections before activation. Optional `years_of_experience` and each
+education entry's `percentage` can be entered in the editor and saved in the
+existing JSON. They default to unknown, including for previously saved resumes.
+They are not estimated from dates or CGPA. Matching excludes `raw_text`, names,
+contact details, and institution/company names so stale extracted text cannot
+override saved corrections. See [matching](matching.md) for eligibility scope.
+
 Phase 3.5 reads at most the configured size limit plus one byte into application
 memory before rejecting an oversized upload. Multipart parsing may already spool
 the request to temporary storage; this is not a transport-level body limit or a

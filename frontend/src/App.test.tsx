@@ -23,7 +23,7 @@ test("renders API jobs with freshness and filters them", async () => {
   expect(await screen.findByText("AI Engineer")).toBeInTheDocument();
   expect(screen.getAllByText("FRESH").length).toBeGreaterThan(0);
   fireEvent.change(screen.getByLabelText("Filter jobs"), { target: { value: "backend" } });
-  expect(screen.getByText(/No jobs yet/)).toBeInTheDocument();
+  expect(screen.getByText(/No jobs match these filters/)).toBeInTheDocument();
 });
 
 test("renders API-backed companies", async () => {
@@ -93,5 +93,26 @@ test("deletes a failed resume without parsed data", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Delete Resume" }));
   await waitFor(() => expect(screen.queryByRole("button", { name: /broken.pdf/ })).not.toBeInTheDocument());
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/resumes/1"), { method: "DELETE" });
+});
+
+test("saves explicitly reviewed experience and academic percentage", async () => {
+  const resume = resumeFixture({ parsed_data: { ...profile, education: [{ institution: "Example", degree: "B.Tech", field_of_study: null, start_date: null, end_date: null, graduation_year: "2026", cgpa: "9/10" }] } });
+  const fetchMock = vi.fn().mockImplementation(async (url: string, options?: RequestInit) => {
+    const result = options?.method === "PUT" ? { ...resume, parsed_data: JSON.parse(String(options.body)) } : resume;
+    return { ok: true, json: async () => url.endsWith("/resumes") ? [resume] : result };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  renderResumes();
+  fireEvent.click(await screen.findByRole("button", { name: /resume.pdf · completed/ }));
+  fireEvent.change(await screen.findByLabelText("Total years of experience"), { target: { value: "2.5" } });
+  const percentage = screen.getByLabelText("Academic percentage");
+  expect(percentage).toHaveValue(null);
+  fireEvent.change(percentage, { target: { value: "75" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/resumes/1/profile"), expect.objectContaining({ method: "PUT", body: expect.any(String) })));
+  const saved = JSON.parse(fetchMock.mock.calls.find(([, options]) => options?.method === "PUT")![1].body);
+  expect(saved.years_of_experience).toBe(2.5);
+  expect(saved.education[0].percentage).toBe(75);
+  expect(saved.education[0].cgpa).toBe("9/10");
 });
 
