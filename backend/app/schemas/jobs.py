@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.matching import JobMatch
+
 
 class NormalizedJob(BaseModel):
     """The source-independent job representation accepted by ingestion."""
@@ -36,6 +38,8 @@ class JobRead(BaseModel):
     source: str
     status: str
     freshness: str
+    match_score: float | None = None
+    matching: JobMatch | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

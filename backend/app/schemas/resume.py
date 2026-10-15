@@ -11,6 +11,7 @@ class EducationEntry(BaseModel):
     end_date: str | None = None
     graduation_year: str | None = None
     cgpa: str | None = None
+    percentage: float | None = Field(default=None, ge=0, le=100)
 
 
 class ExperienceEntry(BaseModel):
@@ -38,6 +39,7 @@ class ParsedResume(BaseModel):
     linkedin_url: str | None = None
     github_url: str | None = None
     skills: list[str] = Field(default_factory=list)
+    years_of_experience: float | None = Field(default=None, ge=0, le=100)
     education: list[EducationEntry] = Field(default_factory=list)
     experience: list[ExperienceEntry] = Field(default_factory=list)
     projects: list[ProjectEntry] = Field(default_factory=list)
