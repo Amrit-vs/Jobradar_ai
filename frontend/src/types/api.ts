@@ -1,4 +1,8 @@
 export type Job = { id: number; company: string; company_slug: string; title: string; description: string; location: string | null; url: string; posted_at: string | null; employment_type: string | null; experience_level: string | null; source: string; status: string; freshness: string };
 export type Company = { id: number; name: string; enabled: boolean; job_count: number; last_collection_status: string | null; last_collection_at: string | null };
 export type CollectionStats = { companies_processed: number; jobs_fetched: number; jobs_added: number; jobs_updated: number; duplicates: number; errors: number };
-
+export type EducationEntry = { institution: string | null; degree: string | null; field_of_study: string | null; start_date: string | null; end_date: string | null; graduation_year: string | null; cgpa: string | null };
+export type ExperienceEntry = { company: string | null; role: string | null; start_date: string | null; end_date: string | null; description: string | null };
+export type ProjectEntry = { name: string | null; organization: string | null; start_date: string | null; end_date: string | null; description: string | null; technologies: string[] };
+export type ParsedResume = { full_name: string | null; email: string | null; phone: string | null; location: string | null; linkedin_url: string | null; github_url: string | null; skills: string[]; education: EducationEntry[]; experience: ExperienceEntry[]; projects: ProjectEntry[]; certifications: string[]; raw_text: string };
+export type Resume = { id: number; filename: string; file_type: string; file_size: number; uploaded_at: string; updated_at: string; parsing_status: string; parsing_error: string | null; is_active: boolean; parsed_data?: ParsedResume | null };

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, expect, vi } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { App } from "./App";
 
 test("shows the dashboard shell", () => {
@@ -19,7 +19,7 @@ test("renders API jobs with freshness and filters them", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><MemoryRouter><App /></MemoryRouter></QueryClientProvider>);
   expect(await screen.findByText("AI Engineer")).toBeInTheDocument();
-  expect(screen.getByText("FRESH")).toBeInTheDocument();
+  expect(screen.getAllByText("FRESH").length).toBeGreaterThan(0);
   fireEvent.change(screen.getByLabelText("Filter jobs"), { target: { value: "backend" } });
   expect(screen.getByText(/No jobs yet/)).toBeInTheDocument();
 });
@@ -39,3 +39,14 @@ test("renders job details and a manual apply link", async () => {
   expect(await screen.findByText("Mock job description")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Apply now" })).toHaveAttribute("href", "https://example.invalid/apply");
 });
+
+test("renders the resume upload area", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [] }));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/resume-profile"]}><App /></MemoryRouter></QueryClientProvider>);
+  expect(
+  await screen.findByRole("heading", { name: "Resume & Profile" })
+).toBeInTheDocument();
+  expect(screen.getByLabelText("Upload resume")).toBeInTheDocument();
+});
+

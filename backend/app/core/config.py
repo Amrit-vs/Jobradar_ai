@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     cors_origins: str = "http://localhost:5173"
     max_upload_size_mb: int = 10
+    max_resume_size_mb: int = 10
+    development_user_email: str = "local-user@jobradar.test"
+    development_user_name: str = "Local User"
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -22,4 +25,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

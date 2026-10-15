@@ -9,6 +9,7 @@ JobRadar AI is a multi-company job discovery foundation. Phase 2 adds an offline
 3. Apply the schema: `docker compose exec backend alembic upgrade head`.
 4. Open `http://localhost:5173`; API docs are at `http://localhost:8000/docs`.
 5. Use **Run Job Collection** in the UI, or call `POST /api/admin/collect`, to load mock jobs.
+6. Open **Resume & Profile** to upload a PDF/DOCX resume for local, deterministic parsing.
 
 ## Local development
 

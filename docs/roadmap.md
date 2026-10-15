@@ -2,6 +2,7 @@
 
 1. Foundation — complete in this repository.
 2. Mock adapters, normalized jobs, deduplication, freshness, collection run history, API-backed jobs and companies — complete.
+3. Resume upload, deterministic parsing, review, and active resume selection — complete.
 3. Dashboard data, filtering, details, and company controls.
 4. Resume upload, parsing, and profile review.
 5. Configurable TF-IDF matching and ranking.
