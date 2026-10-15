@@ -8,7 +8,7 @@ from app.services.collectors.nvidia import NvidiaAdapter
 
 class CompanyAdapterRegistry:
     def __init__(self, adapters: list[JobSourceAdapter] | None = None):
-        self._adapters = adapters or [GoogleAdapter(), MicrosoftAdapter(), AmazonAdapter(), NvidiaAdapter(), AdobeAdapter()]
+        self._adapters = adapters if adapters is not None else [GoogleAdapter(), MicrosoftAdapter(), AmazonAdapter(), NvidiaAdapter(), AdobeAdapter()]
 
     def enabled_adapters(self) -> list[JobSourceAdapter]:
         return list(self._adapters)

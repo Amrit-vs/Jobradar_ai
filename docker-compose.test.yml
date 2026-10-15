@@ -1,0 +1,31 @@
+# Separate disposable validation stack; never attach development database volumes.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: jobradar_test
+      POSTGRES_USER: jobradar_test
+      POSTGRES_PASSWORD: ${JOBRADAR_TEST_PASSWORD:?Set a disposable test password}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobradar_test -d jobradar_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobradar_test:${JOBRADAR_TEST_PASSWORD}@db:5432/jobradar_test
+      TEST_POSTGRES_URL: postgresql+psycopg://jobradar_test:${JOBRADAR_TEST_PASSWORD}@db:5432/jobradar_test
+      TEST_DATABASE_DISPOSABLE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "alembic upgrade head && alembic check && python -m pytest -p no:cacheprovider"]
+
+  frontend:
+    build: ./frontend
+    command: ["sh", "-c", "npm test && npm run build"]

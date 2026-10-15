@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -14,11 +15,23 @@ from app.services.resume.parser import ResumeParser
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
 
-def development_user(db: Session) -> User:
-    user = db.scalar(select(User).where(User.email == settings.development_user_email))
+def development_user(db: Session, *, lock: bool = False) -> User:
+    query = select(User).where(User.email == settings.development_user_email)
+    if lock:
+        # All activation requests lock the same row before reading resume state.
+        query = query.with_for_update()
+    user = db.scalar(query)
     if user is None:
-        user = User(name=settings.development_user_name, email=settings.development_user_email)
-        db.add(user); db.flush()
+        try:
+            with db.begin_nested():
+                user = User(name=settings.development_user_name, email=settings.development_user_email)
+                db.add(user)
+                db.flush()
+        except IntegrityError:
+            # Another request may have created the shared development user.
+            user = db.scalar(query)
+            if user is None:
+                raise
     return user
 
 
@@ -33,9 +46,10 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     filename = Path(file.filename or "").name
     extension = Path(filename).suffix.lower()
     if extension not in {".pdf", ".docx"}: raise HTTPException(status_code=400, detail="Only PDF and DOCX resume files are supported")
-    contents = await file.read()
+    limit = settings.max_resume_size_mb * 1024 * 1024
+    contents = await file.read(limit + 1)
     if not contents: raise HTTPException(status_code=400, detail="The uploaded document is empty")
-    if len(contents) > settings.max_resume_size_mb * 1024 * 1024: raise HTTPException(status_code=413, detail=f"Resume must be at most {settings.max_resume_size_mb} MB")
+    if len(contents) > limit: raise HTTPException(status_code=413, detail=f"Resume must be at most {settings.max_resume_size_mb} MB")
     resume = Resume(user_id=development_user(db).id, filename=filename, file_type=extension.removeprefix("."), file_size=len(contents), parsing_status="processing")
     db.add(resume); db.flush()
     try:
@@ -76,7 +90,10 @@ def update_profile(resume_id: int, profile: ResumeProfileUpdate, db: Session = D
 
 @router.post("/{resume_id}/activate", response_model=ResumeRead)
 def activate_resume(resume_id: int, db: Session = Depends(get_db)) -> Resume:
-    resume = owned_resume(db, resume_id)
+    user = development_user(db, lock=True)
+    resume = db.scalar(select(Resume).where(Resume.id == resume_id, Resume.user_id == user.id))
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
     db.execute(update(Resume).where(Resume.user_id == resume.user_id).values(is_active=False))
     resume.is_active = True; db.commit(); db.refresh(resume)
     return resume

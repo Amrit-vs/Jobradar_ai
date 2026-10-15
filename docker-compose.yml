@@ -19,7 +19,12 @@ services:
     build: ./backend
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-jobradar}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-jobradar}
-      CORS_ORIGINS: http://localhost:5173
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
+      MAX_RESUME_SIZE_MB: ${MAX_RESUME_SIZE_MB:-10}
+      DEVELOPMENT_USER_EMAIL: ${DEVELOPMENT_USER_EMAIL:-local-user@jobradar.test}
+      DEVELOPMENT_USER_NAME: ${DEVELOPMENT_USER_NAME:-Local User}
     ports:
       - "8000:8000"
     depends_on:

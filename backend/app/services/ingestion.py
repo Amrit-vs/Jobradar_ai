@@ -22,8 +22,10 @@ class JobIngestionService:
     def collect_all(self) -> CollectionStats:
         total = CollectionStats()
         for adapter in self.registry.enabled_adapters():
-            total.companies_processed += 1
             run_stats = self._collect_adapter(adapter)
+            if run_stats is None:
+                continue
+            total.companies_processed += 1
             for field in ("jobs_fetched", "jobs_added", "jobs_updated", "duplicates", "errors"):
                 setattr(total, field, getattr(total, field) + getattr(run_stats, field))
         logger.info("collection_completed companies=%s fetched=%s added=%s updated=%s duplicates=%s errors=%s", total.companies_processed, total.jobs_fetched, total.jobs_added, total.jobs_updated, total.duplicates, total.errors)
@@ -37,14 +39,17 @@ class JobIngestionService:
             self.db.flush()
         return company
 
-    def _collect_adapter(self, adapter: JobSourceAdapter) -> CollectionStats:
-        company = self._company_for(adapter)
-        run = CollectionRun(company_id=company.id, status="running")
-        self.db.add(run)
-        self.db.flush()
+    def _collect_adapter(self, adapter: JobSourceAdapter) -> CollectionStats | None:
+        """Own one transaction per source; failed batches never persist partial jobs."""
         stats = CollectionStats()
-        logger.info("adapter_started company=%s", company.slug)
         try:
+            company = self._company_for(adapter)
+            if not company.enabled:
+                return None
+            run = CollectionRun(company_id=company.id, status="running")
+            self.db.add(run)
+            self.db.flush()
+            logger.info("adapter_started company=%s", adapter.slug)
             jobs = adapter.fetch_jobs()
             stats.jobs_fetched = len(jobs)
             for normalized_job in jobs:
@@ -52,21 +57,37 @@ class JobIngestionService:
                 stats.jobs_added += added
                 stats.jobs_updated += updated
                 stats.duplicates += duplicate
+                # Make this record visible to the next lookup with autoflush disabled,
+                # and detect constraint failures inside the source transaction.
+                self.db.flush()
             run.status = "success"
-            logger.info("adapter_completed company=%s fetched=%s added=%s updated=%s duplicates=%s", company.slug, stats.jobs_fetched, stats.jobs_added, stats.jobs_updated, stats.duplicates)
+            self._finish_run(run, stats)
+            self.db.commit()
+            logger.info("adapter_completed company=%s fetched=%s added=%s updated=%s duplicates=%s", adapter.slug, stats.jobs_fetched, stats.jobs_added, stats.jobs_updated, stats.duplicates)
         except Exception as exc:  # one source must not stop the rest of the collection
-            logger.exception("adapter_failed company=%s", company.slug)
-            stats.errors = 1
-            run.status = "failed"
-            run.error_message = str(exc)[:2000]
+            self.db.rollback()
+            logger.error("adapter_failed company=%s error_type=%s", adapter.slug, type(exc).__name__)
+            stats = CollectionStats(jobs_fetched=stats.jobs_fetched, errors=1)
+            try:
+                company = self._company_for(adapter)
+                run = CollectionRun(company_id=company.id, status="failed", error_message=f"Collection failed ({type(exc).__name__})")
+                self.db.add(run)
+                self._finish_run(run, stats)
+                self.db.commit()
+            except Exception:
+                # A database outage may also prevent writing failure history.
+                self.db.rollback()
+                logger.error("collection_failure_history_unavailable company=%s", adapter.slug)
+        return stats
+
+    @staticmethod
+    def _finish_run(run: CollectionRun, stats: CollectionStats) -> None:
         run.jobs_fetched = stats.jobs_fetched
         run.jobs_added = stats.jobs_added
         run.jobs_updated = stats.jobs_updated
         run.duplicates = stats.duplicates
         run.errors = stats.errors
         run.completed_at = datetime.now(timezone.utc)
-        self.db.commit()
-        return stats
 
     def _upsert(self, company: Company, incoming: NormalizedJob) -> tuple[int, int, int]:
         existing = self.db.scalar(select(Job).where(Job.company_id == company.id, Job.external_job_id == incoming.external_job_id))
